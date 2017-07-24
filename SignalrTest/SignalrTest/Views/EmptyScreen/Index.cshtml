@@ -1,0 +1,134 @@
+﻿@{
+    Layout = null;
+}
+
+
+@{
+    var screenNumber = (int)ViewData["ScreenNumber"];
+}
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <script src="~/Scripts/jquery-1.10.2.min.js"></script>
+    <script src="~/Scripts/jquery.signalR-2.2.2.min.js"></script>
+    <link href="~/Content/bootstrap.css" rel="stylesheet" />
+    <script src="~/Scripts/bootstrap.js"></script>
+    <script src="~/Scripts/EmptyScreen.js"></script>
+    <title>Index</title>
+</head>
+<body style="background-color:#171720">     
+    <div class="container-fluid">
+        <div class="row"><span><br /></span></div>
+        <div class="row">
+            <div class="col-md-4">
+            </div>
+            <div class="col-md-4">
+                <div class="panel panel-default">                   
+                    <div class="panel-body text-center" style="border:10px double; background-color: #f7682c">
+                       <p style="font-size:120px; color: white">@screenNumber</p>
+                    </div>                   
+                </div>
+            </div>
+            <div class="col-md-4">
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+<script type="text/javascript">
+
+    var connectionId = '';
+
+    var NewScreen = function () {
+        var self = this;
+
+        self.Id = '';
+        self.UserName = '';
+        self.RocolappUserName = '';
+        self.SpotifyUserId = '';
+        self.ConnectionId = '';
+        self.Connected = '';
+        self.ScreenCode = '';
+    };
+
+    var connection = $.hubConnection();
+    var screenProxy = connection.createHubProxy('ScrennPusher');
+
+    screenProxy.on('GetRockolaInformation', function (rockolappUser) {
+        //To do the redirect to the user id own screen
+        console.log('Este screen es ahora del usuario' + rockolappUser);
+        console.log('Now connected again, connection ID=' + connection.id);
+
+        window.location.href = '@Url.Action("Index", "Rockolapp")' +"?spotifyUserId=" + rockolappUser;
+    });
+
+    connection.start().done(function () {
+
+        console.log('Now connected, connection ID=' + connection.id);
+
+        connectionId = connection.id;
+
+        var request = new NewScreen();
+        request.ConnectionId = connection.id;
+        request.ScreenCode = '@screenNumber';
+
+        $.ajax({
+            url: "/api/ScreenApi/SaveRockolappScreen",
+            type: 'POST',
+            data: request,
+            success: function (data) {
+            }
+        });
+
+        $('#pushButton').click(function () {
+            screenProxy.invoke("PromptScreen", connection.id, '212312').done(function () {
+                console.log('Invocation of PromptScreen Succeded');
+            }).fail(function (error)
+            {
+                console.log('failed to execute hub method');
+            });
+        });
+    })
+    .fail(function () { console.log('Could not Connect!'); });
+
+    connection.disconnected(function () {
+        debugger;
+        var disconnectionRequest = new NewScreen();
+
+        disconnectionRequest.ConnectionId = connectionId;
+
+
+        $.ajax({
+            url: "api/ScreenApi/RemoveScreen",
+            type: 'POST',
+            data: request,
+            success: function (data) {
+
+            }
+        });
+
+    });    
+
+    window.onbeforeunload = function (e) {
+        e = e || window.event;
+         debugger;
+        var disconnectionRequest = new NewScreen();
+
+        disconnectionRequest.ConnectionId = connection.id;
+
+
+        $.ajax({
+            url: "api/ScreenApi/RemoveScreen",
+            type: 'POST',
+            data: disconnectionRequest,
+            success: function (data) {
+                return true;
+            }
+        });
+    };
+
+
+</script>
